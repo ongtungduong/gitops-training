@@ -12,13 +12,18 @@ main (branch hạ tầng)
 │   ├── appprojects/           # AppProject: platform, birdnet-market, mention-mate
 │   ├── appsets/               # ApplicationSet: platform, all-projects
 │   └── shared-gateway-app.yaml
-├── helm-charts/app/           # 1 base chart duy nhất, mọi app dùng chung
+├── helm-charts/app/           # base chart gốc (canonical) — đồng bộ sang các branch project
 ├── platform/gateway/          # Gateway dùng chung (shared-gw)
 └── scripts/seal.sh            # bọc kubeseal
 
 project-<name> (mỗi project 1 branch)
+├── helm-charts/app/           # bản copy của chart (đồng bộ từ main)
 └── apps/<app>/overlays/<env>/values.yaml
 ```
+
+> **Vì sao chart copy sang branch?** ArgoCD multi-source không cho `$values` trỏ tới *revision khác*
+> của *cùng 1 repo*. Nên chart và values phải cùng revision = branch project. Sửa chart trên `main`
+> rồi đồng bộ sang branch (`git checkout <branch> && git checkout main -- helm-charts/app && commit`).
 
 ## Bootstrap (1 lệnh tay duy nhất)
 
@@ -40,7 +45,7 @@ kubectl apply -f root-application.yaml
 | birdnet-market | `birdnet-market-frontend`, `birdnet-market-backend` | 2 × 3 env = 6 |
 | mention-mate | `mention-mate-app` (backend + worker) | 1 × 3 env = 3 |
 
-→ tổng **9 Application**, mỗi cái = `helm-charts/app` (từ `main`) + `values.yaml` của env đó.
+→ tổng **9 Application**, mỗi cái = `helm-charts/app` + `values.yaml` (cùng lấy từ branch project đó).
 
 ## Base chart `app`
 
@@ -60,8 +65,8 @@ apps/<app>/overlays/<env>/values.yaml   # components, config, sealedSecret.encry
 ```
 
 `all-projects` dùng git **directories generator** quét `apps/*/overlays/*` (không cần `config.yaml`).
-Application = `{project}-{app}-{env}`, namespace = `{project}-{env}`. Chart luôn lấy từ `main`;
-khác biệt app/env nằm hết trong `values.yaml` ⇒ **promotion = sửa `values.yaml`** của env đó.
+Application = `{project}-{app}-{env}`, namespace = `{project}-{env}`. Cả chart và values lấy từ **cùng
+branch project** (cùng revision); khác biệt app/env nằm hết trong `values.yaml` ⇒ **promotion = sửa `values.yaml`**.
 
 ## SealedSecret
 

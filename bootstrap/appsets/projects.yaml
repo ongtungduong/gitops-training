@@ -1,9 +1,10 @@
 # Sinh 1 Application cho mỗi (project, app, env).
 #   Trục 1 (list)  : project = branch     -> branch-based
 #   Trục 2 (git)   : env     = directory  -> directory-based
-# Mỗi Application là multi-source, CẢ HAI source đều là repo này:
-#   source[0] = base Helm chart DUY NHẤT (helm-charts/app) trên branch main
-#   source[1] = branch của project, cung cấp values theo env ($values)
+# Mỗi Application là multi-source, CẢ HAI source đều là repo này, CÙNG revision = branch project
+# (ArgoCD không cho $values trỏ khác revision của cùng 1 repo):
+#   source[0] = base Helm chart helm-charts/app (bản copy trên branch project, đồng bộ từ main)
+#   source[1] = values theo env trên branch project ($values)
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
@@ -41,9 +42,9 @@ spec:
     spec:
       project: '{{.project}}'
       sources:
-        # base = chart DUY NHẤT helm-charts/app (không version), luôn lấy từ main
+        # base = chart helm-charts/app trên CHÍNH branch project (cùng revision với values)
         - repoURL: https://github.com/ongtungduong/gitops-training.git
-          targetRevision: main
+          targetRevision: '{{.branch}}'
           path: 'helm-charts/app'
           helm:
             valueFiles:
